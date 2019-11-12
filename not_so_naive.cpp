@@ -10,6 +10,8 @@
 #include <iostream>
 #include <vector>
 #include <set>
+#include <chrono>
+#include <random>
 #include <string>
 #include <algorithm> 
 #include "jsoncpp/json.h"
@@ -32,11 +34,25 @@ const ll WEIGHT[4][2] = {
 const int N = 15;
 const int M = 15;
 
+mt19937 rng(chrono::steady_clock::now().time_since_epoch().count());
+
+static uint64_t splitmix64(uint64_t x)
+{
+    x += 0x9e3779b97f4a7c15;
+    x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9;
+    x = (x ^ (x >> 27)) * 0x94d049bb133111eb;
+    return x ^ (x >> 31);
+}
+
 struct Coordinate
 {
 	int x, y, w;
 	
-	Coordinate(int _x = 0, int _y = 0): x(_x), y(_y), w(min(_x + 1, N - _x) * min(_y + 1, M - _y)) {}
+	Coordinate(int _x = 0, int _y = 0): x(_x), y(_y)
+	{
+		static const uint64_t FIXED_RANDOM = rng();
+		w = min(_x + 1, N - _x) * min(_y + 1, M - _y) + ((FIXED_RANDOM >> 32) ^ splitmix64(x)) % 3 + ((FIXED_RANDOM << 32) ^ splitmix64(x)) % 3;
+	}
 	
 	Coordinate operator+(const Coordinate& b) const
 	{
@@ -242,7 +258,14 @@ int main()
     }
     board.modify(input["requests"][turnID]["x"].asInt(), input["requests"][turnID]["y"].asInt(), 1);
     Json::FastWriter writer;
-    cout << writer.write(board.turn()) << endl;
+    if (turnID > 0 || ~input["requests"][0u]["x"].asInt()) cout << writer.write(board.turn()) << endl;
+    else
+    {
+    	Json::Value ret;
+    	ret["response"]["x"] = 7;
+    	ret["response"]["y"] = 7;
+    	cout << writer.write(ret) << endl;
+	}
     return 0;
 }
 
