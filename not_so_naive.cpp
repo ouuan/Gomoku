@@ -34,7 +34,7 @@ const ll WEIGHT[4][2] = {
 const int N = 15;
 const int M = 15;
 
-mt19937 rng(chrono::steady_clock::now().time_since_epoch().count());
+mt19937_64 rng(chrono::steady_clock::now().time_since_epoch().count());
 
 static uint64_t splitmix64(uint64_t x)
 {
@@ -51,7 +51,7 @@ struct Coordinate
 	Coordinate(int _x = 0, int _y = 0): x(_x), y(_y)
 	{
 		static const uint64_t FIXED_RANDOM = rng();
-		w = min(_x + 1, N - _x) * min(_y + 1, M - _y) + ((FIXED_RANDOM >> 32) ^ splitmix64(x)) % 3 + ((FIXED_RANDOM << 32) ^ splitmix64(x)) % 3;
+		w = min(_x + 1, N - _x) * min(_y + 1, M - _y) + ((FIXED_RANDOM >> 32) ^ splitmix64(x)) % 3 + ((FIXED_RANDOM << 32) ^ splitmix64(y)) % 3;
 	}
 	
 	Coordinate operator+(const Coordinate& b) const

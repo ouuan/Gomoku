@@ -2,7 +2,7 @@
 
 [Botzone 用户主页](https://botzone.org.cn/user/5db6b765d8a86373ab32ff5a)
 
-Not So Naive ver.55 简介：
+简介：
 
 1. 动态计算每个空格对于双方的估价函数，使用 `std::set` 进行维护。估价函数基于下了这步棋后在四个方向上能连成的活/死一二三四五数量。
 
