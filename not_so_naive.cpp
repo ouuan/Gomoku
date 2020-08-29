@@ -32,6 +32,7 @@ SOFTWARE.
 #include <random>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "jsoncpp/json.h"
@@ -141,6 +142,8 @@ struct Blank
     Blank(Coordinate _coor, ll _w) : coor(_coor), w(_w)
     {}
 
+    Blank() = default;
+
     bool operator<(const Blank& b) const
     {
         return w == b.w ? b.coor < coor : w > b.w;
@@ -155,6 +158,14 @@ class Board
     vector<vector<vector<vector<Status>>>>
         status;        // the status of connected blocks in four directions in two colors
     set<Blank> blank;  // blanks sorted by max(weight for black, weight for white)
+
+    static const int M1 = 1000284647;
+    static const int M2 = 1000069067;
+    static const int K1 = 201673;
+    static const int K2 = 290663;
+    vector<int> P1, P2;
+    ll h1 = 0, h2 = 0;
+    vector<unordered_map<ll, Blank>> result;  // the result of solve
 
     int& a(const Coordinate& coor)  // get color of coor
     {
@@ -199,6 +210,10 @@ class Board
     {
         if (a(coor) == out_of_board)
             return;
+
+        h1 = (h1 + (ll)P1[coor.x * M + coor.y] * (color - a(coor)) % M1 * K1 % M1 + M1) % M1;
+        h2 = (h2 + (ll)P2[coor.x * M + coor.y] * (color - a(coor)) % M2 * K2 % M2 + M2) % M2;
+
         if (a(coor) == 2)
             blank.erase(Blank(coor, max(calc(coor, 0), calc(coor, 1))));
         if (color == 2)
@@ -225,6 +240,9 @@ class Board
         if (k == 1 || blank.size() == 1)
             return Blank(blank.begin()->coor, (k + 10) * calc(blank.begin()->coor, color));
 
+        if (result[k].count((ll(h1) << 32) + h2))
+            return result[k][(ll(h1) << 32) + h2];
+
         ll mx = -1e18;
         Coordinate choose;
         auto it = blank.begin();
@@ -250,7 +268,7 @@ class Board
                 break;  // alpha-beta pruning
         }
 
-        return Blank(choose, mx);
+        return result[k][(ll(h1) << 32) + h2] = Blank(choose, mx);
     }
 
    public:
@@ -258,6 +276,14 @@ class Board
         : board(N, vector<int>(M, 2)),
           status(N, vector<vector<vector<Status>>>(M, vector<vector<Status>>(4, vector<Status>(2))))
     {
+        P1 = P2 = vector<int>(N * M, 1);
+        for (int i = 1; i < N * M; ++i)
+        {
+            P1[i] = (ll)P1[i - 1] * K1 % M1;
+            P2[i] = (ll)P2[i - 1] * K2 % M2;
+        }
+        result.resize(DEPTH + 1);
+
         for (int i = 0; i < N; ++i)
         {
             for (int j = 0; j < M; ++j)
@@ -275,10 +301,10 @@ class Board
         modify(Coordinate(x, y), color);
     }
 
-    Json::Value turn()
+    Json::Value turn(int depth = DEPTH)
     {
         Json::Value ret;
-        auto res = solve(0, DEPTH, -1e18, 1e18);
+        auto res = solve(0, depth, -1e18, 1e18);
         ret["response"]["x"] = res.coor.x;
         ret["response"]["y"] = res.coor.y;
         ret["debug"]["value"] = to_string(res.w);
@@ -302,7 +328,9 @@ int main()
     board.modify(input["requests"][turnID]["x"].asInt(), input["requests"][turnID]["y"].asInt(), 1);
     Json::FastWriter writer;
     if (turnID > 0 || ~input["requests"][0u]["x"].asInt())
-        cout << writer.write(board.turn()) << endl;
+    {
+        cout << writer.write(board.turn(turnID == 0 ? DEPTH - 2 : DEPTH)) << endl;
+    }
     else
     {
         Json::Value ret;
